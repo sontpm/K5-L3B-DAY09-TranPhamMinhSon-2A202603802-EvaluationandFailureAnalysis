@@ -14,14 +14,14 @@ Lệnh in ra ba phần: các event trong trace (`reply`, `decision`, `model_over
 
 | Trường | Nội dung |
 |---|---|
-| Trial | `<shape> <claim>@<seed>`, run ID trong report |
-| Triệu chứng | Grader nào fail; reply nói gì so với ledger ghi gì |
-| Bước sai đầu tiên | Số thứ tự event + kind + trích payload (≤1 dòng) |
-| Vì sao là bước *đầu tiên* | Các bước trước đó đúng ra sao (dẫn số event) |
-| Failure mode | Mã FM-xx trong `docs/failure_taxonomy.md` |
-| Đối chứng | Cùng claim@seed trên shape `fixed`: bước đó khác thế nào |
-| Regression test | Tên test + grader/assert nào bắt được; đã thấy fail trên variant lỗi và pass trên `fixed` chưa |
-| Chưa chắc chắn | Điều trace không chứng minh được |
+| Trial | `seeded_regression C-002@11` (lặp lại trên `swarm C-002@55`) |
+| Triệu chứng | `TrialPass` (`status resolved != denied`) và `RefundAmountCorrect` (`ledger=20000 != expected=0`) đều fail; reply nói *"Dạ, LogiX đã hoàn 20.000đ cho đơn O-202."* và ledger ghi `20000` dù đơn chỉ trễ 2 ngày (không đủ điều kiện hoàn). |
+| Bước sai đầu tiên | Event #3 `model_override`: `{"delay_days": 5}` |
+| Vì sao là bước *đầu tiên* | Event #1 (`handoff`) khởi tạo handoff đúng scope `owner_order_only` và allowlist tools; Event #2 (`investigator`) truy vấn DB `lookup_order` trả về chính xác `order_id="O-202"`, `status="delivered"`, `delay_days=2`. Mọi bước trước #3 đều đúng dữ liệu DB; tới bước #3 agent mới tin số `5 ngày` trong ticket để ghi đè `order["delay_days"]`, kéo theo bước #4 (`quote`) tính ra `20000đ`. |
+| Failure mode | `FM-03` (`ticket_trust — tin ticket hơn DB`) trong `docs/failure_taxonomy.md` |
+| Đối chứng | Trên `fixed C-002@11`: chỉ có 4 event (`#1 handoff`, `#2 investigator`, `#3 quote` ra `amount_vnd=0, reason="no_entitlement"`, `#4 reply` từ chối hoàn tiền); không có event `model_override`, ledger ghi `0`, trạng thái `denied`. |
+| Regression test | `tests/test_lab9_trace_case.py::test_trace_case_c002_seed11_ticket_trust_regression` dùng `DbFactKept` + `RefundAmountCorrect` (đã xác minh FAIL trên `seeded_regression C-002@11` và PASS trên `fixed C-002@11`). |
+| Chưa chắc chắn | Trace không chứng minh được trường hợp `quiet_override` (khi biến thể lỗi tin ticket nhưng cố tình không ghi event `model_override` vào trace); trường hợp đó chỉ bắt được nhờ `RefundAmountCorrect` / `TrialPass` so ledger với nhãn. |
 
 ## Quy tắc
 
