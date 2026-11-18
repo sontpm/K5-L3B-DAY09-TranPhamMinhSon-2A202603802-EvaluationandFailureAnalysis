@@ -1,0 +1,2 @@
+src/data/eval/eval_set_*.jsonl text eol=lf
+src/data/eval/labels_*.json text eol=lf
